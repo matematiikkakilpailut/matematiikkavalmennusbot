@@ -11,6 +11,8 @@ python-telegram-bot = {extras = ["all"], version = "^20.4"}
 feedparser = "^6.0.10"
 tomlkit = "^0.12.1"
 filelock = "^3.12.2"
+bleach = "^6.0.0"
+rich = "^13.5.2"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -1,8 +1,13 @@
+import html
+import logging
 import os
 
+import bleach
 import feedparser
 import tomlkit
 from filelock import FileLock
+
+logger = logging.getLogger(__name__)
 
 
 def get_unseen_entries(feed_url, state_file="state.toml"):
@@ -16,6 +21,53 @@ def get_unseen_entries(feed_url, state_file="state.toml"):
     new = [entry for entry in latest_feed.entries if entry.id not in seen_ids]
     save_entry_ids([entry.id for entry in new], state_file)
     return new
+
+
+def format_entry(entry):
+    """Format an entry in HTML.
+
+    Clean the HTML to be suitable for Telegram."""
+
+    title = html.escape(entry.title)
+    link = entry.link
+    allowed_tags = [
+        "b",
+        "strong",
+        "i",
+        "em",
+        "u",
+        "ins",
+        "s",
+        "strike",
+        "del",
+        "tg-spoiler",
+        "a",
+        "tg-emoji",
+        "code",
+        "pre",
+        "li",  # not really allowed
+    ]
+    allowed_attrs = {
+        "a": ["href"],
+        "tg-emoji": ["emoji-id"],
+        "code": ["class"],
+    }
+
+    content = ""
+    for block in entry.content:
+        if block.type in ("text/html", "application/xhtml+xml"):
+            cleaned = bleach.clean(
+                block.value, tags=allowed_tags, attributes=allowed_attrs, strip=True
+            )
+            cleaned = cleaned.replace("\n", " ").replace("<li>", "\n• ").replace("</li>", "")
+            content += cleaned + "\n"
+
+        elif block.type == "text/plain":
+            content += f"{html.escape(block.value)}\n"
+
+    result = f'<a href="{link}"><b>{title}</b></a>\n{content}'
+    logger.info(f"Formatted entry: {result!r}")
+    return result
 
 
 def create_state_file(file_path):

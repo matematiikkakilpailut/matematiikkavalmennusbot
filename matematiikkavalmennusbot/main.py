@@ -1,15 +1,31 @@
-import html
 import logging
 
 import tomlkit
-from telegram import Update
 
+from rich.logging import RichHandler
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CallbackContext, CommandHandler
 
-from .rss import get_unseen_entries
+from .rss import format_entry, get_unseen_entries
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+
+
+def logging_setup():
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    fh = logging.FileHandler("matematiikkavalmennusbot.log")
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(
+        fmt := logging.Formatter(
+            "[%(asctime)s] %(name)20s %(filename)20s:%(lineno)03d [%(levelname)s] %(message)s"
+        )
+    )
+    root.addHandler(fh)
+    rh = RichHandler(rich_tracebacks=True)
+    rh.setLevel(logging.INFO)
+    rh.setFormatter(fmt)
+    root.addHandler(rh)
 
 
 async def start(update: Update, context: CallbackContext) -> None:
@@ -29,11 +45,12 @@ async def fetch_feed_callback(context: CallbackContext) -> None:
     chat_id = context.bot_data["chat_id"]
     entries = get_unseen_entries(url)[-max:]
     for entry in entries:
-        text = f'☞ <a href="{entry.link}"><b>{html.escape(entry.title)}</b></a>'
+        text = format_entry(entry)
         await context.bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
 
 
 def main():
+    logging_setup()
     with open("config.toml", "rt") as f:
         config = tomlkit.load(f)
         telegram = config.get("telegram")
