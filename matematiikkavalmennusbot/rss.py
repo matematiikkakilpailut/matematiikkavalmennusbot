@@ -65,6 +65,9 @@ def format_entry(entry):
         elif block.type == "text/plain":
             content += f"{html.escape(block.value)}\n"
 
+    # telegram handles soft hyphens as zero-width spaces and inserts
+    # line breaks without hyphens
+    content = content.replace("\u00ad", "").replace("&shy;", "")
     result = f'<a href="{link}"><b>{title}</b></a>\n{content}'
     logger.info(f"Formatted entry: {result!r}")
     return result
